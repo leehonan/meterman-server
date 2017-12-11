@@ -11,7 +11,7 @@ setup(name='meterman',
     author='Lee Honan',
     author_email='lee at leehonan dot com',
     license='MIT',
-    packages=['src'],
+    packages=['meterman'],
     include_package_data=True,
     install_requires=[
         'arrow', 'flask', 'flask_httpauth', 'flask_restful', 'ipaddress', 'uptime', 'pytest', 'argparse', 'pyserial'
