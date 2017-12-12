@@ -7,13 +7,13 @@ then
 fi
 
 echo "Cleaning up from previous runs..."
-rm /home/pi/temp/*.service.*
-rm /home/pi/temp/autoreset.*
-rm /home/pi/temp/avrdude.*
-rm /home/pi/temp/firmware.*
-rm /home/pi/temp/meterman.*
-rm /home/pi/temp/pishutdown.*
-rm -R /home/pi/temp/Python.*
+rm /home/pi/temp/*.service*
+rm /home/pi/temp/autoreset*
+rm /home/pi/temp/avrdude*
+rm /home/pi/temp/firmware*
+rm /home/pi/temp/meterman*
+rm /home/pi/temp/pishutdown*
+rm -R /home/pi/temp/Python*
 
 echo "Fetching prerequisites..."
 apt update
