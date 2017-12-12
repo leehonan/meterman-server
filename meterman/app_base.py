@@ -26,15 +26,15 @@ app_config = config['App']
 HOME_PATH = app_config['home_path']
 TEMP_PATH = app_config['temp_path']
 
-config_symlink = HOME_PATH + '/' + config_file
-if not os.path.islink(config_symlink):
-    os.symlink(working_dir + '/' + config_file, config_symlink)
-
 # create directories if they don't exist
 if not os.path.exists(HOME_PATH):
     os.mkdir(HOME_PATH)
 if not os.path.exists(TEMP_PATH):
     os.mkdir(TEMP_PATH)
+
+config_symlink = HOME_PATH + '/' + config_file
+if not os.path.islink(config_symlink):
+    os.symlink(working_dir + '/' + config_file, config_symlink)
 
 # STATE_FILE = HOME_PATH + app_config['state_file']
 LOG_FILE = HOME_PATH + app_config['log_file']
