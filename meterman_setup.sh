@@ -39,6 +39,20 @@ fi
 
 if [ ! -f /usr/bin/autoreset ]
 then
+
+    echo "Configuring GPIO Serial..."
+    if [ ! -f /dev/ttyAMA0 ]
+    then
+        sudo systemctl stop serial-getty@ttyAMA0.service
+        sudo systemctl disable serial-getty@ttyAMA0.service
+    else
+        sudo systemctl stop serial-getty@ttyS0.service
+        sudo systemctl disable serial-getty@ttyS0.service
+    fi
+
+    grep -q -F 'enable_uart=1' /boot/config.txt || echo 'enable_uart=1' >> /boot/config.txt
+    sed -e s/console=serial0,115200//g -i /boot/cmdline.txt
+
     echo "Setting up gateway firmware tools..."
     cd /home/pi/temp
     wget https://github.com/leehonan/rfm69-pi-gateway/raw/master/src/autoreset
@@ -50,6 +64,7 @@ then
     chmod +x /usr/bin/avrdude-autoreset
     mv /usr/bin/avrdude /usr/bin/avrdude-original
     ln -s /usr/bin/avrdude-autoreset /usr/bin/avrdude
+
     echo "Done\n"
 fi
 

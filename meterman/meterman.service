@@ -4,10 +4,8 @@ After=syslog.target
 
 [Service]
 Type=simple
-User=pi
-Group=pi
 WorkingDirectory=/usr/local/lib/python3.6/site-packages/meterman/
-ExecStart=sudo python3.6 meter_man.py
+ExecStart=/usr/lib/python/python3.6 meter_man.py
 StandardOutput=syslog
 StandardError=syslog
 
