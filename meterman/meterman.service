@@ -5,7 +5,7 @@ After=syslog.target
 [Service]
 Type=simple
 WorkingDirectory=/usr/local/lib/python3.6/site-packages/meterman/
-ExecStart=/usr/lib/python/python3.6 meter_man.py
+ExecStart=/usr/lib/python/python3.6 /usr/local/lib/python3.6/site-packages/meterman/meter_man.py
 StandardOutput=syslog
 StandardError=syslog
 
