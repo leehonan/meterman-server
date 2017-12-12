@@ -58,8 +58,9 @@ then
     wget https://github.com/leehonan/rfm69-pi-gateway/raw/master/src/autoreset
     wget https://github.com/leehonan/rfm69-pi-gateway/raw/master/src/avrdude-autoreset
     wget https://github.com/leehonan/rfm69-pi-gateway/raw/master/firmware.hex
-    cp autoreset /usr/bin
-    cp avrdude-autoreset /usr/bin
+    cp firmware.hex /home/pi/
+    cp autoreset /usr/bin/
+    cp avrdude-autoreset /usr/bin/
     chmod +x /usr/bin/autoreset
     chmod +x /usr/bin/avrdude-autoreset
     mv /usr/bin/avrdude /usr/bin/avrdude-original
@@ -96,4 +97,10 @@ systemctl daemon-reload
 systemctl enable meterman.service
 systemctl start meterman.service
 
-echo "Done!  Now edit /home/pi/meterman/config.txt file, configure gateway, and restart"
+echo "Done!  Now..."
+echo "  1) reboot if first install for GPIO serial to work"
+echo "  2) stop service with 'sudo systemctl stop meterman.service'"
+echo "  2) Update gateway with something like... 'sudo avrdude -c arduino -p atmega328p -P /dev/ttyAMA0 -b 115200 -U flash:w:/home/pi/firmware.hex'"
+echo "  3) configure gateway, set neti"
+echo "  4) edit /home/pi/meterman/config.txt file"
+echo "  5) reboot again"
