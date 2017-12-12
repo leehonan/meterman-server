@@ -6,6 +6,15 @@ then
     exit
 fi
 
+echo "Cleaning up from previous runs..."
+rm /home/pi/temp/*.service.*
+rm /home/pi/temp/autoreset.*
+rm /home/pi/temp/avrdude.*
+rm /home/pi/temp/firmware.*
+rm /home/pi/temp/meterman.*
+rm /home/pi/temp/pishutdown.*
+rm -R /home/pi/temp/Python.*
+
 echo "Fetching prerequisites..."
 apt update
 apt install --yes wget screen minicom sqlite3 avrdude libffi-dev libssl-dev zlib1g-dev build-essential checkinstall libreadline-gplv2-dev libncursesw5-dev libssl-dev libsqlite3-dev tk-dev libgdbm-dev libc6-dev libbz2-dev
