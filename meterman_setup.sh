@@ -63,7 +63,7 @@ fi
 
 echo "Setting up meterman..."
 cd /home/pi/temp
-wget https://github.com/leehonan/meterman-server/raw/master/src/meterman.service
+wget https://github.com/leehonan/meterman-server/raw/master/meterman/meterman.service
 wget https://github.com/leehonan/meterman-server/raw/master/meterman-0.1.tar.gz
 pip3.6 install meterman-0.1.tar.gz --upgrade
 cp meterman.service /lib/systemd/system
