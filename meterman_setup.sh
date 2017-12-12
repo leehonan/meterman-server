@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# download with 'sudo wget https://github.com/leehonan/meterman-server/raw/master/meterman_setup.sh'
+# then 'sudo chmod +x ./meterman_setup.sh'
+# then 'sudo ./meterman_setup.sh'
+
 if [ $(/usr/bin/id -u) -ne 0 ]
 then
     echo "Not running as sudo!"
