@@ -185,22 +185,25 @@ class MeterDeviceManager:
             # queued messages received from gateway, read according to last_rx_msg_obj sequential key
             new_msgs = {key: value for key, value in gateway['gw_obj'].serial_rx_msg_objects.items() if key > gateway['last_rx_msg_obj']}
             for key, new_msg in new_msgs.items():
-                if new_msg['message_type'] == gmsg.SMSG_MTRUPDATE_NO_IRMS_DEFN['smsg_type']:
-                    self.proc_meter_update(new_msg, False)
-                elif new_msg['message_type'] == gmsg.SMSG_MTRUPDATE_WITH_IRMS_DEFN['smsg_type']:
-                    self.proc_meter_update(new_msg, True)
-                elif new_msg['message_type'] == gmsg.SMSG_MTRREBASE_DEFN['smsg_type']:
-                    self.proc_meter_rebase(new_msg)
-                elif new_msg['message_type'] == gmsg.SMSG_GWSNAP_DEFN['smsg_type']:
-                    self.proc_gateway_snapshot(new_msg)
-                elif new_msg['message_type'] == gmsg.SMSG_NODESNAP_DEFN['smsg_type']:
-                    self.proc_node_snapshot(new_msg)
-                elif new_msg['message_type'] == gmsg.SMSG_NODEDARK_DEFN['smsg_type']:
-                    self.proc_node_dark(new_msg)
-                elif new_msg['message_type'] == gmsg.SMSG_GPMSG_DEFN['smsg_type']:
-                    self.proc_gp_msg(new_msg)
-                else:
-                    self.logger.warn("Got unknown message object: " + print(new_msg))
+                try:
+                    if new_msg['message_type'] == gmsg.SMSG_MTRUPDATE_NO_IRMS_DEFN['smsg_type']:
+                        self.proc_meter_update(new_msg, False)
+                    elif new_msg['message_type'] == gmsg.SMSG_MTRUPDATE_WITH_IRMS_DEFN['smsg_type']:
+                        self.proc_meter_update(new_msg, True)
+                    elif new_msg['message_type'] == gmsg.SMSG_MTRREBASE_DEFN['smsg_type']:
+                        self.proc_meter_rebase(new_msg)
+                    elif new_msg['message_type'] == gmsg.SMSG_GWSNAP_DEFN['smsg_type']:
+                        self.proc_gateway_snapshot(new_msg)
+                    elif new_msg['message_type'] == gmsg.SMSG_NODESNAP_DEFN['smsg_type']:
+                        self.proc_node_snapshot(new_msg)
+                    elif new_msg['message_type'] == gmsg.SMSG_NODEDARK_DEFN['smsg_type']:
+                        self.proc_node_dark(new_msg)
+                    elif new_msg['message_type'] == gmsg.SMSG_GPMSG_DEFN['smsg_type']:
+                        self.proc_gp_msg(new_msg)
+                    else:
+                        self.logger.warn("Got unknown message object: " + print(new_msg))
+                except:
+                    self.logger.error("Failed to process message object: " + print(new_msg))
 
                 gateway['last_rx_msg_obj'] = key
 

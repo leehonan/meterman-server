@@ -6,6 +6,8 @@ After=syslog.target
 Type=simple
 WorkingDirectory=/usr/local/lib/python3.6/site-packages/meterman/
 ExecStart=/usr/local/bin/python3.6 /usr/local/lib/python3.6/site-packages/meterman/meter_man.py
+Restart=always
+RestartSec=5s
 StandardOutput=syslog
 StandardError=syslog
 
