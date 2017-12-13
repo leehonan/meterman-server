@@ -113,12 +113,14 @@ class MeterDeviceGateway:
         self.serial_rx_msg_objects = {}
         self.rx_msg_objects_seq = 0
 
-        self.serial_thread = threading.Thread(target=self.rx_serial_msg)
+        self.serial_thread = threading.Thread(target=self.proc_serial_msg)
         self.serial_thread.daemon = True  # Daemonize thread
         self.serial_thread.start()  # Start the execution
 
+
     def register_msg_proc_func(self, message_definition):
         self.message_proc_functions[message_definition['smsg_type']] = 'proc_msg_' + str.lower(message_definition['smsg_type'])
+
 
     # ----------------------------------------------------------------------------------------------------------------------------------------------------------
     #  MESSAGE PROCESSING - TO GATEWAY/NODES (TX)
@@ -305,6 +307,30 @@ class MeterDeviceGateway:
 
 
     def rx_serial_msg(self):
+        try:
+            if self.serial_conn.inWaiting() > 0:
+                serial_in = self.serial_conn.readline().strip().decode("latin1")
+
+                if serial_in.startswith(gmsg.SMSG_RX_PREFIX):
+                    self.logger.debug('Got serial data: %s', serial_in)
+                    self.last_seen = arrow.utcnow().timestamp
+                    # inbound serial line is a message, so drop prefix and convert it from CSV to message object
+                    msg_obj = gmsg.get_message_obj(serial_in, self.uuid, self.gateway_id, self.network_id)
+
+                    # pass object to appropriate processor function using dictionary mapping
+                    getattr(self, self.message_proc_functions[msg_obj['message_type']])(msg_obj)
+
+        except serial.serialutil.SerialTimeoutException as err:
+            self.logger.debug('Serial timeout: {0}'.format(err))
+
+        except serial.serialutil.SerialException as err:
+            self.logger.warn('Serial exception: {0}'.format(err))
+
+        except Exception as err:
+            self.logger.error('Error receiving serial message: {0}'.format(err))
+
+
+    def proc_serial_msg(self):
         loop_count = 0
         while self.serial_conn.isOpen():
             try:
@@ -312,17 +338,7 @@ class MeterDeviceGateway:
 
                 loop_count = loop_count + 1 if loop_count < 60 else 1
 
-                if self.serial_conn.inWaiting() > 0:
-                    serial_in = self.serial_conn.readline().strip().decode("latin1")
-
-                    if serial_in.startswith(gmsg.SMSG_RX_PREFIX):
-                        self.logger.debug('Got serial data: %s', serial_in)
-                        self.last_seen = arrow.utcnow().timestamp
-                        # inbound serial line is a message, so drop prefix and convert it from CSV to message object
-                        msg_obj = gmsg.get_message_obj(serial_in, self.uuid, self.gateway_id, self.network_id)
-
-                        # pass object to appropriate processor function using dictionary mapping
-                        getattr(self, self.message_proc_functions[msg_obj['message_type']])(msg_obj)
+                self.rx_serial_msg()
 
                 if len(self.serial_tx_msg_buffer) > 0:
                     tx_msg = self.serial_tx_msg_buffer.pop(0)
@@ -334,12 +350,11 @@ class MeterDeviceGateway:
 
                 sleep(0.5)
 
-            except serial.serialutil.SerialTimeoutException as err:
-                self.logger.debug('Serial timeout: {0}'.format(err))
-
-            except serial.serialutil.SerialException as err:
-                self.logger.debug('Serial exception: {0}'.format(err))
 
             except (KeyboardInterrupt, SystemExit):
+                # should only be called on shutdown
                 self.serial_conn.close()
                 break
+
+            except Exception as err:
+                self.logger.error('Error processing serial message: {0}'.format(err))

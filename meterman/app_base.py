@@ -12,39 +12,53 @@ DEVICE_OFF = 0
 
 MIN_TIME = arrow.get(1483228800).timestamp        # Jan 1, 2000
 MAX_TIME = arrow.get(datetime.datetime.max).timestamp
-
-working_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
-os.chdir(working_dir)
 DEFAULT_CONFIG = 'default_config.txt'
-config_file = 'config.txt'
-if not os.path.isfile(config_file):
-    shutil.copy(DEFAULT_CONFIG, config_file)
-
-config = configparser.ConfigParser()
-config.read('config.txt')
-app_config = config['App']
-HOME_PATH = app_config['home_path']
-TEMP_PATH = app_config['temp_path']
-
-# create directories if they don't exist
-if not os.path.exists(HOME_PATH):
-    os.mkdir(HOME_PATH)
-if not os.path.exists(TEMP_PATH):
-    os.mkdir(TEMP_PATH)
-
-config_symlink = HOME_PATH + '/' + config_file
-if not os.path.islink(config_symlink):
-    os.symlink(working_dir + '/' + config_file, config_symlink)
-
-# STATE_FILE = HOME_PATH + app_config['state_file']
-LOG_FILE = HOME_PATH + app_config['log_file']
-DB_FILE = HOME_PATH + app_config['db_file']
-LOG_LEVEL = app_config['log_level'].upper()
+CONFIG_FILE = 'config.txt'
 DEFAULT_APP_LOGGER = 'Meterman'
+
+# paths set to defaults - should be overridden except for testing
+home_path = '/tmp'
+temp_path = '/tmp'
+log_file = temp_path + '/mm_log_file'
+db_file = temp_path + '/mm_db_file'
+log_level = 'DEBUG'
+config = None
+
+def do_app_init():
+    # called by application on init
+    working_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
+    os.chdir(working_dir)
+
+    if not os.path.isfile(CONFIG_FILE):
+        shutil.copy(DEFAULT_CONFIG, CONFIG_FILE)
+
+    global config
+    config = configparser.ConfigParser()
+    config.read(CONFIG_FILE)
+    app_config = config['App']
+
+    global home_path, temp_path, log_file, db_file, log_level
+    home_path = app_config['home_path']
+    temp_path = app_config['temp_path']
+
+    # create directories if they don't exist
+    if not os.path.exists(home_path):
+        os.mkdir(home_path)
+    if not os.path.exists(temp_path):
+        os.mkdir(temp_path)
+
+    config_symlink = home_path + '/' + CONFIG_FILE
+    if not os.path.islink(config_symlink):
+        os.symlink(working_dir + '/' + CONFIG_FILE, config_symlink)
+
+    log_file = home_path + app_config['log_file']
+    db_file = home_path + app_config['db_file']
+    log_level = app_config['log_level'].upper()
+
 
 # TODO, why is working fine on jessie but only one logger writing on stretch?
 
-def get_logger(logger_name=DEFAULT_APP_LOGGER, log_file=LOG_FILE, is_msg_out=False):
+def get_logger(logger_name=DEFAULT_APP_LOGGER, log_file=log_file, is_msg_out=False):
     # Set up a specific logger with our desired output level
     logger = logging.getLogger(logger_name)
 
@@ -59,7 +73,7 @@ def get_logger(logger_name=DEFAULT_APP_LOGGER, log_file=LOG_FILE, is_msg_out=Fal
         file_handler = logging.handlers.RotatingFileHandler(
             log_file, maxBytes=10000000, backupCount=5)  # set log file size and number of logs retained
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s','%Y-%m-%d %H:%M:%S')
-        logger.setLevel(LOG_LEVEL)
+        logger.setLevel(log_level)
         console_handler = logging.StreamHandler()
         console_handler.setFormatter(formatter)
         logger.addHandler(console_handler)
@@ -78,9 +92,9 @@ def get_log_lines(num_lines):
     '''
     Get n lines from current log file,
     '''
-    log_file = open(LOG_FILE, "r")
+    log_file_r = open(log_file, "r")
 
-    last_line = sum(1 for line in log_file) - 1
+    last_line = sum(1 for line in log_file_r) - 1
 
     if last_line <= num_lines:
         first_line = 0
@@ -90,21 +104,23 @@ def get_log_lines(num_lines):
     i = 0
     result = ""
 
-    log_file.seek(0, 0)
-    for line in log_file:
+    log_file_r.seek(0, 0)
+    for line in log_file_r:
         if first_line <= i <= last_line:
             result += line
         i += 1
 
-    log_file.close()
+    log_file_r.close()
     return result
 
 
 def get_ip_address():
+    # TODO: not working?
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.connect(("8.8.8.8", 80))
     return s.getsockname()[0]
 
+def get_user():
+    return pwd.getpwuid(os.getuid())[0]
 
-logger = get_logger()
-logger.info('Running as user: ' + pwd.getpwuid(os.getuid())[0])
+

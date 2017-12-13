@@ -10,29 +10,30 @@ TODO: rename to reflect broader than meter data
 
 '''
 
-from enum import Enum
 
-import app_base as base
-
-from meterman import meter_db as db
+from meterman import meter_db as db, app_base as base
 
 
 class MeterDataManager:
 
-    def __init__(self):
+    def __init__(self, db_file=base.db_file):
         self.logger = base.get_logger(logger_name='data_mgr')
-        self.db_mgr = db.DBManager(base.DB_FILE)
+        self.db_mgr = db.DBManager(db_file)
 
-        ev_file_config = base.config['EventFile']
         self.do_ev_file = False
+        ev_file_config = None
+
+        if base.config is not None:
+            ev_file_config = base.config['EventFile']
+
         if ev_file_config is not None and ev_file_config.getboolean('write_event_file'):
-            self.ev_logger = base.get_logger('ev_logger', base.HOME_PATH + ev_file_config['event_file'], True)
+            self.ev_logger = base.get_logger('ev_logger', base.home_path + ev_file_config['event_file'], True)
             self.do_ev_file = True
             self.ev_log_meter_only = ev_file_config.getboolean('meter_only')
 
 
     def close_db(self):
-        self.db_mgr.close()
+        self.db_mgr.conn_close()
         self.db_mgr = None
 
 
@@ -127,9 +128,19 @@ class MeterDataManager:
             # entries after last rebase
             if last_mup_entry['when_start'] >= last_rebase_entry['when_start']:
                 total_consumption += last_mup_entry['meter_value'] - last_rebase_entry['meter_value']
-        # only 1 rebase
-        elif first_mup_entry['when_start'] >= first_rebase_entry['when_start']:
+        # only 1 rebase prior to last mup
+        elif last_mup_entry['when_start'] >= first_rebase_entry['when_start']:
             total_consumption += last_mup_entry['meter_value'] - first_rebase_entry['meter_value']
+        # only 1 rebase after last mup
+        elif last_mup_entry['when_start'] <= first_rebase_entry['when_start']:
+            total_consumption += first_rebase_entry['meter_value'] - last_mup_entry['meter_value']
+
+        self.logger.debug('Calculated consumption as {} Wh with:'.format(total_consumption))
+        self.logger.debug('First MUP Entry: {}'.format(first_mup_entry['meter_value'] if first_mup_entry is not None else None))
+        self.logger.debug('MUP Entry before first rebase: {}'.format(mup_entry_before_first_rebase['meter_value'] if mup_entry_before_first_rebase is not None else None))
+        self.logger.debug('First Rebase Entry: {}'.format(first_rebase_entry['meter_value'] if first_rebase_entry is not None else None))
+        self.logger.debug('Last Rebase Entry: {}'.format(last_rebase_entry['meter_value'] if last_rebase_entry is not None else None))
+        self.logger.debug('Last MUP Entry: {}'.format(last_mup_entry['meter_value'] if last_mup_entry is not None else None))
 
         return total_consumption
 

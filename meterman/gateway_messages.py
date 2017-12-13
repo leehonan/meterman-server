@@ -551,7 +551,7 @@ def get_message_obj(message_str, gateway_uuid, gateway_id, network_id):
     message_str = message_str.replace(SMSG_RX_PREFIX, '')
 
     # split into records (will be at least 2)
-    msg_in_records = message_str.split(SMSG_RS)
+    msg_in_records = list(filter(None, message_str.split(SMSG_RS)))
 
     header_defn = None
     detail_defn = None

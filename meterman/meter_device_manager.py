@@ -29,6 +29,7 @@ class MeterDeviceManager:
 
         if gateway_config_oride:
             # used for testing, single gateway
+            # dict - e.g. {'network_id': '9.9.9.99', 'gateway_id': '1', 'label': 'Test Gateway', 'serial_port': '/dev/ttys001', 'serial_baud': '9600'}
             gateway_configs = [gateway_config_oride]
         else:
             gateway_configs = [x for x in base.config.sections() if x.startswith('Gateway')]
@@ -39,7 +40,7 @@ class MeterDeviceManager:
             else:
                 gw_config = base.config[gateway]
             gateway_uuid = self.get_node_uuid(gw_config['network_id'], gw_config['gateway_id'])
-            self.gateways[gateway_uuid] = {}                # TODO: make below attr of gateway object?
+            self.gateways[gateway_uuid] = {}
             self.gateways[gateway_uuid]['gw_obj'] = gway.MeterDeviceGateway(
                 self, network_id=gw_config['network_id'], gateway_id=gw_config['gateway_id'],
                 label=gw_config['label'],
@@ -51,14 +52,15 @@ class MeterDeviceManager:
 
         self.meters = {}
 
-        self.meter_man = meter_man
+        self.meter_man = meter_man  # may be set to None to support testing
 
-        meter_sim_configs = [x for x in base.config.sections() if x.startswith('SimMeter')]
-        for meter_sim in meter_sim_configs:
-            meter_sim_config = base.config[meter_sim]
-            self.add_meter_sim(meter_sim_config['network_id'], meter_sim_config['gateway_id'], meter_sim_config['node_id'],
-                               meter_sim_config['interval'], meter_sim_config['start_val'], meter_sim_config['read_min'],
-                               meter_sim_config['read_max'], meter_sim_config['max_msg_entries'])
+        if not gateway_config_oride:
+            meter_sim_configs = [x for x in base.config.sections() if x.startswith('SimMeter')]
+            for meter_sim in meter_sim_configs:
+                meter_sim_config = base.config[meter_sim]
+                self.add_meter_sim(meter_sim_config['network_id'], meter_sim_config['gateway_id'], meter_sim_config['node_id'],
+                                   meter_sim_config['interval'], meter_sim_config['start_val'], meter_sim_config['read_min'],
+                                   meter_sim_config['read_max'], meter_sim_config['max_msg_entries'])
 
 
     def get_node_uuid(self, network_id, node_id):
@@ -70,7 +72,8 @@ class MeterDeviceManager:
             self.meters[node_uuid] = {}
             self.meters[node_uuid]['node_id'] = node_id
             self.meters[node_uuid]['gateway_uuid'] = gateway_uuid
-            self.meter_man.register_node(node_uuid)
+            if self.meter_man is not None:
+                self.meter_man.register_node(node_uuid)
 
 
     def uts_to_str(self, utc_timestamp):
@@ -109,7 +112,8 @@ class MeterDeviceManager:
         if is_irms:
             self.meters[node_uuid]['last_rms_current'] = last_entry['spot_rms_current']
 
-        self.meter_man.proc_meter_update(node_uuid, meter_entries_out)
+        if self.meter_man is not None:
+            self.meter_man.proc_meter_update(node_uuid, meter_entries_out)
 
         self.logger.info("Got meter update from node " + node_uuid + ".  Last entry was at " +
                          self.uts_to_str(last_entry['when_start']) + ' value: ' + str(last_entry['meter_value']) + 'Wh')
@@ -123,7 +127,8 @@ class MeterDeviceManager:
         self.meters[node_uuid]['last_entry_timestamp'] = msg_obj['HEADER_1'].entry_timestamp
         self.meters[node_uuid]['last_meter_value'] = msg_obj['HEADER_1'].meter_value
 
-        self.meter_man.proc_meter_rebase(node_uuid, msg_obj['HEADER_1'].entry_timestamp, msg_obj['HEADER_1'].meter_value)
+        if self.meter_man is not None:
+            self.meter_man.proc_meter_rebase(node_uuid, msg_obj['HEADER_1'].entry_timestamp, msg_obj['HEADER_1'].meter_value)
         self.logger.info("Got meter rebase from node " + node_uuid + ".  Last entry was at " +
                          self.uts_to_str(msg_obj['HEADER_1'].entry_timestamp) + ' value: ' + msg_obj['HEADER_1'].meter_value + 'Wh')
 
@@ -132,7 +137,8 @@ class MeterDeviceManager:
         # gateway object self-updates
         gateway_uuid = self.get_node_uuid(msg_obj['network_id'], msg_obj['gateway_id'])
         rec = msg_obj['HEADER_1']
-        self.meter_man.proc_gateway_snapshot(gateway_uuid, msg_obj['when_received'], msg_obj['network_id'], msg_obj['gateway_id'], rec.when_booted,
+        if self.meter_man is not None:
+            self.meter_man.proc_gateway_snapshot(gateway_uuid, msg_obj['when_received'], msg_obj['network_id'], msg_obj['gateway_id'], rec.when_booted,
                                              rec.free_ram, rec.gateway_time, rec.log_level,
                                              rec.encrypt_key, rec.tx_power)
         self.logger.info("Got gateway snapshot from gateway: " + gateway_uuid)
@@ -155,7 +161,8 @@ class MeterDeviceManager:
                                           'last_rms_current': ns.last_rms_current, 'puck_led_rate': ns.puck_led_rate,
                                           'puck_led_time': ns.puck_led_time, 'last_rssi': ns.last_rssi_at_gateway}
 
-                self.meter_man.proc_node_snapshot(node_uuid, msg_obj['when_received'], msg_obj['network_id'], ns.node_id, msg_obj['gateway_id'], ns.batt_voltage,
+                if self.meter_man is not None:
+                    self.meter_man.proc_node_snapshot(node_uuid, msg_obj['when_received'], msg_obj['network_id'], ns.node_id, msg_obj['gateway_id'], ns.batt_voltage,
                                                     ns.up_time, ns.sleep_time, ns.free_ram, ns.when_last_seen, ns.last_clock_drift,
                                                     ns.meter_interval, ns.meter_impulses_per_kwh, ns.last_meter_entry_finish, ns.last_meter_value, ns.last_rms_current,
                                                     ns.puck_led_rate, ns.puck_led_time, ns.last_rssi_at_gateway)
@@ -166,7 +173,8 @@ class MeterDeviceManager:
         rec = msg_obj['HEADER_1']
         node_uuid = self.get_node_uuid(msg_obj['network_id'], rec.node_id)
         self.ensure_node_exists(node_uuid, rec.node_id, msg_obj['gateway_uuid'])
-        self.meter_man.proc_node_dark(node_uuid, msg_obj['when_received'], rec.last_seen)
+        if self.meter_man is not None:
+            self.meter_man.proc_node_dark(node_uuid, msg_obj['when_received'], rec.last_seen)
         self.logger.info("Got node dark from node: " + node_uuid + ".  Last seen at: " + self.uts_to_str(rec.last_seen))
 
 
@@ -174,12 +182,12 @@ class MeterDeviceManager:
         rec = msg_obj['HEADER_1']
         node_uuid = self.get_node_uuid(msg_obj['network_id'], rec.node_id)
         self.ensure_node_exists(node_uuid, rec.node_id, msg_obj['gateway_uuid'])
-        self.meter_man.proc_gp_msg(node_uuid, msg_obj['when_received'], rec.message)
+        if self.meter_man is not None:
+            self.meter_man.proc_gp_msg(node_uuid, msg_obj['when_received'], rec.message)
         self.logger.info("Got general-purpose message from node: " + node_uuid + " - " + rec.message)
 
 
     def proc_device_messages(self):
-        # TODO: catch and handle garbled messages, e.g. 'MUP_;2,MUDEBUG:'
         # processing per gateway/network
         for key, gateway in self.gateways.items():
             # queued messages received from gateway, read according to last_rx_msg_obj sequential key
@@ -202,8 +210,8 @@ class MeterDeviceManager:
                         self.proc_gp_msg(new_msg)
                     else:
                         self.logger.warn("Got unknown message object: " + print(new_msg))
-                except:
-                    self.logger.error("Failed to process message object: " + print(new_msg))
+                except Exception as err:
+                    self.logger.error("Failed to process message object: " + print(new_msg) + "... " + err)
 
                 gateway['last_rx_msg_obj'] = key
 
@@ -223,7 +231,7 @@ class MeterDeviceManager:
                     if sim_meter['current_msg_start'] == 0:
                         sim_meter['current_msg_start'] = arrow.utcnow().shift(seconds=-message_interval).timestamp
                     sim_msg = 'G>S:MUP_;{},MUP_,{},{}'.format(sim_meter['node_id'], sim_meter['current_msg_start'], sim_meter['value'])
-                    for i in range(1, int(sim_meter['max_msg_entries'])):
+                    for i in range(int(sim_meter['max_msg_entries'])):
                         entry_value = randint(int(sim_meter['read_min']), int(sim_meter['read_max']) + 1)
                         sim_msg += ";{},{}".format(sim_meter['interval'], entry_value)
                         sim_meter['value'] += entry_value

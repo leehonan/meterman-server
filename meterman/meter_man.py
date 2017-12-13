@@ -14,7 +14,6 @@ not device and data handling; communication with these is async
 
 '''
 
-import logging
 from time import sleep
 
 from meterman import app_base as base
@@ -29,15 +28,14 @@ from meterman import meter_db as db
 class MeterMan:
 
     def __init__(self):
+        base.do_app_init()
+        self.logger = base.get_logger(logger_name='meterman')
+        self.logger.info('Running as user: ' + base.get_user())
 
         self.device_mgr = mdev_mgr.MeterDeviceManager(self)
         self.data_mgr = mdata_mgr.MeterDataManager()
         self.when_server_booted = boottime()
         self.simulate_meter = True
-
-        # self.dev_proc_thread = threading.Thread(target=self.do_device_proc)
-        # self.dev_proc_thread.daemon = True  # Daemonize thread
-        # self.dev_proc_thread.start()  # Start the execution
 
         rest_api_config = base.config['RestApi']
         if rest_api_config is not None and rest_api_config.getboolean('run_rest_api'):
@@ -69,7 +67,7 @@ class MeterMan:
 
 
     def proc_node_dark(self, node_uuid, when_received, last_seen):
-        self.data_mgr.proc_node_event(node_uuid, when_received, mdata_mgr.NodeEventType.DARK.value, 'last seen at: ' + str(last_seen))
+        self.data_mgr.proc_node_event(node_uuid, when_received, db.NodeEventType.DARK.value, 'last seen at: ' + str(last_seen))
 
 
     def proc_gp_msg(self, node_uuid, when_received, message):
@@ -79,8 +77,8 @@ class MeterMan:
 
     def do_device_proc(self):
         # device_mgr = mdev_mgr.MeterDeviceManager(self)
-
         self.device_mgr.proc_device_messages()
+
 
     def register_node(self, node_uuid):
         pass

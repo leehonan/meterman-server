@@ -21,7 +21,7 @@ def test_make_meter_update_msg():
     entry_time = BASE_TIME
     entry_value = 100000
 
-    for i in range(0, 7):
+    for i in range(7):
         meter_entries.append(gmsg.message_definitions['MTRUPDATE']['obj_detail_defn'](entry_time, entry_value))
         entry_time = entry_time + 15
         entry_value = entry_value + 10

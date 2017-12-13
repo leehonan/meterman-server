@@ -179,7 +179,8 @@ class DBManager:
                   ' VALUES ("{0}", {1}, "{2}", {3}, "{4}", {5}, {6}, {7}, "{8}")' \
                 .format(node_uuid, when_start_raw, when_start_raw_nonce, when_start, entry_type, entry_value, duration, meter_value, rec_status)
             cursor.execute(cmd)
-            self.logger.debug('Inserted meter_entry record for PRIMARY KEY [{0},{1},{2}]'.format(node_uuid, when_start_raw, when_start_raw_nonce))
+            self.logger.debug('Inserted meter_entry record for PRIMARY KEY [{0},{1},{2}] entry_value={3}, meter_value={4}'.format(
+                node_uuid, when_start_raw, when_start_raw_nonce, entry_value, meter_value))
             self.connection.commit()
             cursor.close()
 
@@ -293,7 +294,7 @@ class DBManager:
             self.logger.warn('sqlite3 Error: {0}'.format(err))
 
 
-    def get_entry(self, node_uuid, is_rebase=False, is_first=True, time_from=None, time_to=None):
+    def get_meter_entry(self, node_uuid, is_rebase=False, is_first=True, time_from=None, time_to=None):
         try:
             # Build SQL update command...
             min_max = 'min' if is_first else 'max'
@@ -313,7 +314,7 @@ class DBManager:
                 cmd = cmd[:-4]  # replace trailing " AND"
 
             min_max = 'ASC' if is_first else 'DESC'
-            cmd += ') ORDER BY when_start {} LIMIT 1'.format(min_max)
+            cmd += ') AND entry_type IN ("{}","{}") ORDER BY when_start {} LIMIT 1'.format(entry_types[0].value, entry_types[1].value, min_max)
 
             cursor = self.connection.cursor()
             cursor.execute(cmd)
@@ -326,28 +327,39 @@ class DBManager:
 
 
     def get_first_mup(self, node_uuid, time_from=None, time_to=None):
-        return self.get_entry(node_uuid, is_rebase=False, is_first=True, time_from=time_from, time_to=time_to)
+        return self.get_meter_entry(node_uuid, is_rebase=False, is_first=True, time_from=time_from, time_to=time_to)
 
 
     def get_last_mup(self, node_uuid, time_from, time_to):
-        return self.get_entry(node_uuid, is_rebase=False, is_first=False, time_from=time_from, time_to=time_to)
+        return self.get_meter_entry(node_uuid, is_rebase=False, is_first=False, time_from=time_from, time_to=time_to)
 
 
     def get_first_rebase(self, node_uuid, time_from, time_to):
-        return self.get_entry(node_uuid, is_rebase=True, is_first=True, time_from=time_from, time_to=time_to)
+        return self.get_meter_entry(node_uuid, is_rebase=True, is_first=True, time_from=time_from, time_to=time_to)
 
 
     def get_last_rebase(self, node_uuid, time_from, time_to):
-        return self.get_entry(node_uuid, is_rebase=True, is_first=False, time_from=time_from, time_to=time_to)
+        return self.get_meter_entry(node_uuid, is_rebase=True, is_first=False, time_from=time_from, time_to=time_to)
 
 
-    def delete_node_meter_entry(self, node_uuid, when_start_raw, when_start_raw_nonce):
+    def delete_meter_entry(self, node_uuid, when_start_raw, when_start_raw_nonce):
         try:
             cursor = self.connection.cursor()
             cursor.execute('DELETE FROM meter_entry WHERE node_uuid = "{0}" AND when_start_raw = {1} AND when_start_raw_nonce = "{2}"'.format(
                 node_uuid, when_start_raw, when_start_raw_nonce
             ))
             cursor.close()
+
+        except sqlite3.Error as err:
+            self.logger.warn('sqlite3 Error: {0}'.format(err))
+
+
+    def delete_all_meter_entries(self, node_uuid):
+        try:
+            cursor = self.connection.cursor()
+            cursor.execute('DELETE FROM meter_entry WHERE node_uuid = "{0}"'.format(node_uuid))
+            cursor.close()
+            self.logger.info('Deleted all meter entries for node {0}'.format(node_uuid))
 
         except sqlite3.Error as err:
             self.logger.warn('sqlite3 Error: {0}'.format(err))

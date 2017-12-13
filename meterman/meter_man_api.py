@@ -389,7 +389,7 @@ class ApiCtrl:
         self.run_thread = None
 
     def run(self):
-        base.logger.info("Starting API implementation server...")
+        base.logger.info('Starting API implementation server on port {} with lan_only={}...'.format(self.port, api_access_lan_only))
         self.run_thread = threading.Thread(target=app.run, kwargs={'host': '0.0.0.0', 'port': self.port, 'debug': False})
         self.run_thread.daemon = True  # Daemonize thread
         self.run_thread.start()  # Start the execution
