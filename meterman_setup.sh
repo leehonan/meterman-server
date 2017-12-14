@@ -10,6 +10,11 @@ then
     exit
 fi
 
+if [ -e /lib/systemd/system/meterman.service ]
+then
+    sudo systemctl stop meterman.service
+fi
+
 echo "Cleaning up from previous runs..."
 rm /home/pi/temp/*.service*
 rm /home/pi/temp/autoreset*
