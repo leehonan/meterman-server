@@ -44,7 +44,7 @@ class DBManager:
 
     def do_vacuum(self):
         self.connection.isolation_level = None
-        self.connection.execute("VACUUM")  # TODO: confirm won't pause startup for too long
+        self.connection.execute("VACUUM")
         self.connection.isolation_level = ""
 
 
@@ -60,7 +60,7 @@ class DBManager:
 
             cursor.execute('SELECT sqlite_version()')
             self.db_version = cursor.fetchone()
-            self.logger.info('Connected to sqlite DB.  Version is: {0}'.format(self.db_version))
+            self.logger.info('Connected to sqlite DB.  Version is: {0}.  File: '.format(self.db_version, database_file_uri))
 
             cursor.execute('CREATE TABLE IF NOT EXISTS meter_entry ('
                             'node_uuid data_type TEXT NOT NULL, '
