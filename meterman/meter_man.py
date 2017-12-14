@@ -40,7 +40,7 @@ class MeterMan:
         rest_api_config = base.config['RestApi']
         if rest_api_config is not None and rest_api_config.getboolean('run_rest_api'):
             self.api_ctrl = meter_man_api.ApiCtrl(self, rest_api_config.getint('flask_port'), rest_api_config['user'],
-                                                  rest_api_config['password'], rest_api_config['access_lan_only'])
+                                                  rest_api_config['password'], rest_api_config.getboolean('access_lan_only'))
             self.api_ctrl.run()
 
 

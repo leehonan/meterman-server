@@ -40,7 +40,7 @@ def check_access_auth():
     if api_access_lan_only:
         allow_access = client_ip in ipaddress.ip_network('127.0.0.1') or client_ip in ipaddress.ip_network(local_ip + '/24', strict=False)
 
-    logger.info('API auth attempt from {}. Local IP is {}. Allow access={}'.format(client_ip, local_ip, allow_access))
+    logger.info('API auth attempt from {}. Local IP is {}. LAN only={}. Allow access={}'.format(client_ip, local_ip, api_access_lan_only, allow_access))
     return allow_access
 
 
