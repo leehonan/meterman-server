@@ -33,12 +33,15 @@ def after_request(response):
 
 
 def check_access_auth():
+    client_ip = ipaddress.ip_address(request.remote_addr)
+    local_ip = base.get_ip_address()
+    allow_access = True
+
     if api_access_lan_only:
-        clientIP = ipaddress.ip_address(request.remote_addr)
-        local_ip = base.get_ip_address()
-        return clientIP in ipaddress.ip_network('127.0.0.1') or clientIP in ipaddress.ip_network(local_ip + '/24', strict=False)
-    else:
-        return True
+        allow_access = client_ip in ipaddress.ip_network('127.0.0.1') or client_ip in ipaddress.ip_network(local_ip + '/24', strict=False)
+
+    logger.info('API auth attempt from {}. Local IP is {}. Allow access={}'.format(client_ip, local_ip, allow_access))
+    return allow_access
 
 
 @auth.get_password
@@ -389,7 +392,7 @@ class ApiCtrl:
         self.run_thread = None
 
     def run(self):
-        base.logger.info('Starting API implementation server on port {} with lan_only={}...'.format(self.port, api_access_lan_only))
+        logger.info('Starting API implementation server on port {} with lan_only={}...'.format(self.port, api_access_lan_only))
         self.run_thread = threading.Thread(target=app.run, kwargs={'host': '0.0.0.0', 'port': self.port, 'debug': False})
         self.run_thread.daemon = True  # Daemonize thread
         self.run_thread.start()  # Start the execution
