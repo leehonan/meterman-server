@@ -22,8 +22,8 @@ GATEWAY_TIME_SYNC_INTERVAL_SECS = 600
 
 class MeterDeviceManager:
 
-    def __init__(self, meter_man, gateway_config_oride=None):
-        self.logger = base.get_logger(logger_name='device_mgr')
+    def __init__(self, meter_man, gateway_config_oride=None, log_file=base.log_file):
+        self.logger = base.get_logger(logger_name='device_mgr', log_file=log_file)
 
         self.gateways = {}
 

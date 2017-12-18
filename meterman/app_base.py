@@ -56,8 +56,6 @@ def do_app_init():
     log_level = app_config['log_level'].upper()
 
 
-# TODO, why is working fine on jessie but only one logger writing on stretch?
-
 def get_logger(logger_name=DEFAULT_APP_LOGGER, log_file=log_file, is_msg_out=False):
     # Set up a specific logger with our desired output level
     logger = logging.getLogger(logger_name)

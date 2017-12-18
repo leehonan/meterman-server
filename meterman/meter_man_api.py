@@ -22,7 +22,7 @@ app = Flask(__name__)
 api = Api(app)
 auth = HTTPBasicAuth()
 meter_man = None
-logger = base.get_logger(logger_name='api')
+logger = None
 
 @app.after_request
 def after_request(response):
@@ -382,12 +382,13 @@ api.add_resource(NodeCtrl, '/nodectrl/<node_uuid>')
 
 class ApiCtrl:
 
-    def __init__(self, meter_man_obj, port=8000, user='rest_user', password='change_me_please', lan_only=False):
-        global meter_man, api_user, api_password, api_access_lan_only
+    def __init__(self, meter_man_obj, port=8000, user='rest_user', password='change_me_please', lan_only=False, log_file=base.log_file):
+        global meter_man, api_user, api_password, api_access_lan_only, logger
         meter_man = meter_man_obj
         api_user = user
         api_password = password
         api_access_lan_only = lan_only
+        logger = base.get_logger(logger_name='api', log_file=log_file)
         self.port = port
         self.run_thread = None
 

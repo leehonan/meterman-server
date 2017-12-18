@@ -1,26 +1,7 @@
-import random
-import string
 import time
 import serial
-import os
-
-from meterman import app_base as base
 import pytest as pt
-
-from meterman import meter_db as db
 from meterman import meter_device_manager as mdm
-
-TEST_DB_FILE = base.temp_path + "/meter_data_test.db"
-
-
-@pt.fixture(scope="session")
-def db_mgr():
-    fixt_db_mgr = db.DBManager(TEST_DB_FILE)
-    yield fixt_db_mgr  # provide the fixture value
-    print("teardown db_mgr")
-    fixt_db_mgr.conn_close()
-    os.remove(TEST_DB_FILE)
-
 
 @pt.fixture(scope="session")
 def dev_mgr():

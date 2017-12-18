@@ -67,7 +67,7 @@ class DeviceStatus(Enum):
 
 class MeterDeviceGateway:
 
-    def __init__(self, meter_device_manager, network_id, gateway_id, label='Gateway', serial_port=DEF_SERIAL_PORT, serial_baud=DEF_SERIAL_BAUD):
+    def __init__(self, meter_device_manager, network_id, gateway_id, label='Gateway', serial_port=DEF_SERIAL_PORT, serial_baud=DEF_SERIAL_BAUD, log_file=base.log_file):
         self.meter_device_manager = meter_device_manager
         self.label = label
         self.state = DeviceStatus.INIT
@@ -82,7 +82,7 @@ class MeterDeviceGateway:
         self.uuid = network_id + '.' + gateway_id
         self.tx_power = A_UNKNOWN
 
-        self.logger = base.get_logger(logger_name=('gway_' + self.uuid))
+        self.logger = base.get_logger(logger_name=('gway_' + self.uuid), log_file=log_file)
 
         self.message_proc_functions = {}
         self.register_msg_proc_func(gmsg.SMSG_GETTIME_DEFN)

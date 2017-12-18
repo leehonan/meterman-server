@@ -16,8 +16,8 @@ from meterman import meter_db as db, app_base as base
 
 class MeterDataManager:
 
-    def __init__(self, db_file=base.db_file):
-        self.logger = base.get_logger(logger_name='data_mgr')
+    def __init__(self, db_file=base.db_file, log_file=base.log_file):
+        self.logger = base.get_logger(logger_name='data_mgr', log_file=log_file)
         self.db_mgr = db.DBManager(db_file)
 
         self.do_ev_file = False

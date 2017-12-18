@@ -48,10 +48,10 @@ class DBManager:
         self.connection.isolation_level = ""
 
 
-    def __init__(self, database_file_uri):
+    def __init__(self, database_file_uri, log_file=base.log_file):
 
         try:
-            self.logger = base.get_logger(logger_name='db_mgr')
+            self.logger = base.get_logger(logger_name='db_mgr', log_file=log_file)
             self.db_uri = database_file_uri
             self.connection = sqlite3.connect(database_file_uri, check_same_thread=False)       # TODO: ensure access thread-safe
             self.connection.row_factory = sqlite3.Row

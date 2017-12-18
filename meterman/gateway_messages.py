@@ -573,7 +573,6 @@ def get_message_obj(message_str, gateway_uuid, gateway_id, network_id):
             # message type is first (only) attribute in first record
             if message_attrib_pos == 0:
                 message_type = record_attrib_val
-                # TODO: handle garbled message, partial or no match on message type
                 message_defn = message_definitions[message_type]
                 header_defn = message_defn['obj_header_defn']
                 detail_defn = message_defn['obj_detail_defn']
