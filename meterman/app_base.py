@@ -12,9 +12,9 @@ DEVICE_OFF = 0
 
 MIN_TIME = arrow.get(1483228800).timestamp        # Jan 1, 2000
 MAX_TIME = arrow.get(datetime.datetime.max).timestamp
-DEFAULT_CONFIG = 'default_config.txt'
+DEFAULT_CONFIG_FILE = 'default_config.txt'
 CONFIG_FILE = 'config.txt'
-DEFAULT_APP_LOGGER = 'Meterman'
+DEFAULT_APP_LOGGER = 'base'
 
 # paths set to defaults - should be overridden except for testing
 home_path = '/tmp'

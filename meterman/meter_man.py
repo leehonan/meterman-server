@@ -29,18 +29,19 @@ class MeterMan:
 
     def __init__(self):
         base.do_app_init()
-        self.logger = base.get_logger(logger_name='meterman')
+        self.logger = base.get_logger(logger_name='meterman', log_file=base.log_file)
         self.logger.info('Running as user: ' + base.get_user())
 
-        self.device_mgr = mdev_mgr.MeterDeviceManager(self)
-        self.data_mgr = mdata_mgr.MeterDataManager()
+        self.device_mgr = mdev_mgr.MeterDeviceManager(self, log_file=base.log_file)
+        self.data_mgr = mdata_mgr.MeterDataManager(db_file=base.db_file, log_file=base.log_file)
         self.when_server_booted = boottime()
         self.simulate_meter = True
 
         rest_api_config = base.config['RestApi']
         if rest_api_config is not None and rest_api_config.getboolean('run_rest_api'):
             self.api_ctrl = meter_man_api.ApiCtrl(self, rest_api_config.getint('flask_port'), rest_api_config['user'],
-                                                  rest_api_config['password'], rest_api_config.getboolean('access_lan_only'))
+                                                  rest_api_config['password'], rest_api_config.getboolean('access_lan_only'),
+                                                  log_file=base.log_file)
             self.api_ctrl.run()
 
 

@@ -18,7 +18,7 @@ class MeterDataManager:
 
     def __init__(self, db_file=base.db_file, log_file=base.log_file):
         self.logger = base.get_logger(logger_name='data_mgr', log_file=log_file)
-        self.db_mgr = db.DBManager(db_file)
+        self.db_mgr = db.DBManager(db_file=db_file, log_file=log_file)
 
         self.do_ev_file = False
         ev_file_config = None
@@ -136,11 +136,11 @@ class MeterDataManager:
             total_consumption += first_rebase_entry['meter_value'] - last_mup_entry['meter_value']
 
         self.logger.debug('Calculated consumption as {} Wh with:'.format(total_consumption))
-        self.logger.debug('First MUP Entry: {}'.format(first_mup_entry['meter_value'] if first_mup_entry is not None else None))
-        self.logger.debug('MUP Entry before first rebase: {}'.format(mup_entry_before_first_rebase['meter_value'] if mup_entry_before_first_rebase is not None else None))
-        self.logger.debug('First Rebase Entry: {}'.format(first_rebase_entry['meter_value'] if first_rebase_entry is not None else None))
-        self.logger.debug('Last Rebase Entry: {}'.format(last_rebase_entry['meter_value'] if last_rebase_entry is not None else None))
-        self.logger.debug('Last MUP Entry: {}'.format(last_mup_entry['meter_value'] if last_mup_entry is not None else None))
+        self.logger.debug('    First MUP Entry: {}'.format(first_mup_entry['meter_value'] if first_mup_entry is not None else None))
+        self.logger.debug('    MUP Entry before first rebase: {}'.format(mup_entry_before_first_rebase['meter_value'] if mup_entry_before_first_rebase is not None else None))
+        self.logger.debug('    First Rebase Entry: {}'.format(first_rebase_entry['meter_value'] if first_rebase_entry is not None else None))
+        self.logger.debug('    Last Rebase Entry: {}'.format(last_rebase_entry['meter_value'] if last_rebase_entry is not None else None))
+        self.logger.debug('    Last MUP Entry: {}'.format(last_mup_entry['meter_value'] if last_mup_entry is not None else None))
 
         return total_consumption
 

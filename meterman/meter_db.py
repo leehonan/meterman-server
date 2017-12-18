@@ -48,19 +48,19 @@ class DBManager:
         self.connection.isolation_level = ""
 
 
-    def __init__(self, database_file_uri, log_file=base.log_file):
+    def __init__(self, db_file=base.db_file, log_file=base.log_file):
 
         try:
             self.logger = base.get_logger(logger_name='db_mgr', log_file=log_file)
-            self.db_uri = database_file_uri
-            self.connection = sqlite3.connect(database_file_uri, check_same_thread=False)       # TODO: ensure access thread-safe
+            self.db_uri = db_file
+            self.connection = sqlite3.connect(db_file, check_same_thread=False)       # TODO: ensure access thread-safe
             self.connection.row_factory = sqlite3.Row
 
             cursor = self.connection.cursor()
 
             cursor.execute('SELECT sqlite_version()')
             self.db_version = cursor.fetchone()
-            self.logger.info('Connected to sqlite DB.  Version is: {0}.  File: '.format(self.db_version, database_file_uri))
+            self.logger.info('Connected to sqlite DB.  Version is: {0}.  File: {1}'.format(self.db_version, self.db_uri))
 
             cursor.execute('CREATE TABLE IF NOT EXISTS meter_entry ('
                             'node_uuid data_type TEXT NOT NULL, '

@@ -44,7 +44,8 @@ class MeterDeviceManager:
             self.gateways[gateway_uuid]['gw_obj'] = gway.MeterDeviceGateway(
                 self, network_id=gw_config['network_id'], gateway_id=gw_config['gateway_id'],
                 label=gw_config['label'],
-                serial_port=gw_config['serial_port'], serial_baud=gw_config['serial_baud'])
+                serial_port=gw_config['serial_port'], serial_baud=gw_config['serial_baud'],
+                log_file=log_file)
             self.gateways[gateway_uuid]['last_rx_msg_obj'] = ''
             self.gateways[gateway_uuid]['last_snap_time'] = 0
             self.gateways[gateway_uuid]['last_clock_sync_time'] = 0
