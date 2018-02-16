@@ -90,22 +90,22 @@ printf "\n==================================================================\n"
 echo "AFTER REBOOT FOLLOW INSTRUCTIONS IN /home/pi/readme.txt"
 printf "\n==================================================================\n"
 
-echo "Post prep_server.sh instructions..." > /home/pi/readme.txt
-echo "" > /home/pi/readme.txt
+echo "Post prep_server.sh instructions..." >> /home/pi/readme.txt
+echo "" >> /home/pi/readme.txt
 echo "METERMAN" >> /home/pi/readme.txt
 echo "stop meterman service with 'sudo systemctl stop meterman.service'" >> /home/pi/readme.txt
 echo "Update gateway with... 'sudo avrdude -c arduino -p atmega328p -P /dev/serial0 -b 115200 -U flash:w:/home/pi/firmware.hex'" >> /home/pi/readme.txt
 echo "Configure gateway with... 'sudo minicom -b 115200 -o -D /dev/serial0'... then set neti" >> /home/pi/readme.txt
 echo "edit /home/pi/meterman/config.txt file" >> /home/pi/readme.txt
-echo "" > /home/pi/readme.txt
+echo "" >> /home/pi/readme.txt
 echo "MODEM" >> /home/pi/readme.txt
 echo "Ensure modem is connected with SIM installed" >> /home/pi/readme.txt
 echo "Browse to http://192.168.1.1 set apn to telstra.internet.  Also on Mobile Connection page make sure the network is set to Auto." >> /home/pi/readme.txt
 echo "Bounce modem with sudo ifconfig eth1 down; sudo ifconfig eth1 up" >> /home/pi/readme.txt
-echo "" > /home/pi/readme.txt
+echo "" >> /home/pi/readme.txt
 echo "WIFI" >> /home/pi/readme.txt
 echo "If desirable uncomment '#dtoverlay=pi3-disable-wifi' in /boot/config.txt to disable wifi" >> /home/pi/readme.txt
-echo "" > /home/pi/readme.txt
+echo "" >> /home/pi/readme.txt
 echo "Now reboot" >> /home/pi/readme.txt
 
 sleep 30
