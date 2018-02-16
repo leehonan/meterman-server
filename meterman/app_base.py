@@ -30,7 +30,7 @@ def do_app_init():
     os.chdir(working_dir)
 
     if not os.path.isfile(CONFIG_FILE):
-        shutil.copy(DEFAULT_CONFIG, CONFIG_FILE)
+        shutil.copy(DEFAULT_CONFIG_FILE, CONFIG_FILE)
 
     global config
     config = configparser.ConfigParser()
