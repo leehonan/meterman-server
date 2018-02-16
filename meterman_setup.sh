@@ -10,9 +10,35 @@ then
     exit
 fi
 
+do_purge=false
+
+while getopts ":p" opt; do
+  case $opt in
+    p)
+      echo "meterman data purge was triggered!" >&2
+      do_purge=true
+      ;;
+    \?)
+      echo "Invalid option: -$OPTARG, only valid option is -p (purge)" >&2
+      ;;
+  esac
+done
+
 if [ -e /lib/systemd/system/meterman.service ]
 then
     sudo systemctl stop meterman.service
+fi
+
+if [ -d /home/pi/meterman ]
+then
+    sudo chown -R root:root /home/pi/meterman
+    sudo chmod -R 775 /home/pi/meterman
+fi
+
+if [ $do_purge ]
+then
+    echo "purging old meterman data..."
+    sudo rm /home/pi/meterman/meterman*
 fi
 
 echo "Cleaning up from previous runs..."
@@ -26,7 +52,7 @@ rm -R /home/pi/temp/Python*
 
 echo "Fetching prerequisites..."
 apt update
-apt install --yes wget screen minicom sqlite3 avrdude libffi-dev libssl-dev zlib1g-dev build-essential checkinstall libreadline-gplv2-dev libncursesw5-dev libssl-dev libsqlite3-dev tk-dev libgdbm-dev libc6-dev libbz2-dev
+apt install --yes --force-yes wget screen minicom sqlite3 avrdude libffi-dev libssl-dev zlib1g-dev build-essential checkinstall libreadline-gplv2-dev libncursesw5-dev libssl-dev libsqlite3-dev tk-dev libgdbm-dev libc6-dev libbz2-dev
 
 echo "Done\n"
 
@@ -60,7 +86,8 @@ then
     fi
 
     grep -q -F 'enable_uart=1' /boot/config.txt || echo 'enable_uart=1' >> /boot/config.txt
-    sed -e s/console=serial0,115200//g -i /boot/cmdline.txt
+    sed -e 's/console=serial0,115200//g' -i /boot/cmdline.txt
+    sed -e 's/T0:23:respawn:/sbin/getty -L ttyAMA0 115200 vt100//g' -i /etc/inittab
 
     echo "Setting up gateway firmware tools..."
     cd /home/pi/temp
