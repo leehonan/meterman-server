@@ -12,7 +12,7 @@ fi
 
 do_purge=false
 
-while getopts ":p" opt; do
+while getopts ":p:n" opt; do
   case $opt in
     p)
       echo "meterman data purge was triggered!" >&2
@@ -23,7 +23,7 @@ while getopts ":p" opt; do
       network_id=$OPTARG
       ;;
     \?)
-      echo "Invalid option: -$OPTARG, only valid option is -p (purge)" >&2
+      echo "Invalid option: -$OPTARG, options are -p (purge), -n <network_id>" >&2
       ;;
   esac
 done
