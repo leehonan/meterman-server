@@ -18,6 +18,10 @@ while getopts ":p" opt; do
       echo "meterman data purge was triggered!" >&2
       do_purge=true
       ;;
+    n)
+      echo "setting network id to $OPTARG" >&2
+      network_id=$OPTARG
+      ;;
     \?)
       echo "Invalid option: -$OPTARG, only valid option is -p (purge)" >&2
       ;;
@@ -127,6 +131,12 @@ cd /home/pi/temp
 wget https://github.com/leehonan/meterman-server/raw/master/meterman/meterman.service
 wget https://github.com/leehonan/meterman-server/raw/master/meterman-0.1.tar.gz
 pip3.6 install meterman-0.1.tar.gz --upgrade
+
+if [ -n "$network_id" ]; then
+    echo "Changing Network Id to $network_id"
+    sed -i "s/network_id = 0.0.1.1/network_id = $network_id/g" -i /usr/local/lib/python3.6/site-packages/default_config.txt
+fi
+
 cp meterman.service /lib/systemd/system
 chmod 644 /lib/systemd/system/meterman.service
 systemctl daemon-reload
