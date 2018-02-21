@@ -55,8 +55,8 @@ rm /home/pi/temp/pishutdown*
 rm -R /home/pi/temp/Python*
 
 echo "Fetching prerequisites..."
-apt update
-apt install --yes --force-yes wget screen minicom sqlite3 avrdude libffi-dev libssl-dev zlib1g-dev build-essential checkinstall libreadline-gplv2-dev libncursesw5-dev libssl-dev libsqlite3-dev tk-dev libgdbm-dev libc6-dev libbz2-dev
+apt-get update
+apt-get install --yes --force-yes wget screen minicom sqlite3 avrdude libffi-dev libssl-dev zlib1g-dev build-essential checkinstall libreadline-gplv2-dev libncursesw5-dev libssl-dev libsqlite3-dev tk-dev libgdbm-dev libc6-dev libbz2-dev
 
 echo "Done\n"
 
@@ -73,7 +73,7 @@ then
     tar xzvf Python-3.6.0.tgz
     cd Python-3.6.0/
     ./configure && sudo make -j4 && sudo make install
-    echo "Done\n"
+    echo "Done"
 fi
 
 if [ ! -e /usr/bin/autoreset ]
