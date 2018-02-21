@@ -11,6 +11,7 @@ then
 fi
 
 do_purge=false
+network_id=0
 
 while getopts ":p:n" opt; do
   case $opt in
@@ -132,7 +133,7 @@ wget https://github.com/leehonan/meterman-server/raw/master/meterman/meterman.se
 wget https://github.com/leehonan/meterman-server/raw/master/meterman-0.1.tar.gz
 pip3.6 install meterman-0.1.tar.gz --upgrade
 
-if [ -n "$network_id" ]; then
+if [ network_id != 0 ]; then
     echo "Changing Network Id to $network_id"
     sed -i "s/network_id = 0.0.1.1/network_id = $network_id/g" -i /usr/local/lib/python3.6/site-packages/default_config.txt
 fi
