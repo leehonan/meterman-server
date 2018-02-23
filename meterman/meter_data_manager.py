@@ -94,55 +94,56 @@ class MeterDataManager:
         first_rebase_entry = None
         last_rebase_entry = None
         last_mup_entry = None
+        abort_calc = False
 
         first_mup_entry = self.db_mgr.get_first_mup(node_uuid, time_from, time_to)
         last_mup_entry = self.db_mgr.get_last_mup(node_uuid, time_from, time_to)
 
         # check if <=1 entries
         if first_mup_entry is None or last_mup_entry is None:
-            return 0
+            abort_calc = True
 
         # get first rebase in period
         first_rebase_entry = self.db_mgr.get_first_rebase(node_uuid, time_from, time_to)
 
         # if there is a first rebase, get immediate entry prior, and check for subsequent rebase
-        if first_rebase_entry is not None:
+        if not abort_calc and first_rebase_entry is not None:
             mup_entry_before_first_rebase = self.db_mgr.get_last_mup(node_uuid, time_from, first_rebase_entry['when_start'] - 1)
             last_rebase_entry = self.db_mgr.get_last_rebase(node_uuid, time_from, time_to)
             if last_rebase_entry['when_start'] == first_rebase_entry['when_start']:
                 last_rebase_entry = None
 
-        total_consumption = 0
+        meter_consumption = 0
         # simple case, no rebases
-        if first_rebase_entry is None:
-            total_consumption = last_mup_entry['meter_value'] - first_mup_entry['meter_value']
-            return total_consumption
+        if not abort_calc and first_rebase_entry is None:
+            meter_consumption = last_mup_entry['meter_value'] - first_mup_entry['meter_value']
+            abort_calc = True
 
         # entries prior to first rebase, use observed reads for period before rebase
-        elif mup_entry_before_first_rebase is not None and first_mup_entry['when_start'] < first_rebase_entry['when_start']:
-            total_consumption = mup_entry_before_first_rebase['meter_value'] - first_mup_entry['meter_value']
+        elif not abort_calc and mup_entry_before_first_rebase is not None and first_mup_entry['when_start'] < first_rebase_entry['when_start']:
+            meter_consumption = mup_entry_before_first_rebase['meter_value'] - first_mup_entry['meter_value']
 
         # with >1 rebase
-        if last_rebase_entry is not None:
-            total_consumption += last_rebase_entry['meter_value'] - first_rebase_entry['meter_value']
+        if not abort_calc and last_rebase_entry is not None:
+            meter_consumption += last_rebase_entry['meter_value'] - first_rebase_entry['meter_value']
             # entries after last rebase
             if last_mup_entry['when_start'] >= last_rebase_entry['when_start']:
-                total_consumption += last_mup_entry['meter_value'] - last_rebase_entry['meter_value']
+                meter_consumption += last_mup_entry['meter_value'] - last_rebase_entry['meter_value']
         # only 1 rebase prior to last mup
-        elif last_mup_entry['when_start'] >= first_rebase_entry['when_start']:
-            total_consumption += last_mup_entry['meter_value'] - first_rebase_entry['meter_value']
+        elif not abort_calc and last_mup_entry['when_start'] >= first_rebase_entry['when_start']:
+            meter_consumption += last_mup_entry['meter_value'] - first_rebase_entry['meter_value']
         # only 1 rebase after last mup
-        elif last_mup_entry['when_start'] <= first_rebase_entry['when_start']:
-            total_consumption += first_rebase_entry['meter_value'] - last_mup_entry['meter_value']
+        elif not abort_calc and last_mup_entry['when_start'] <= first_rebase_entry['when_start']:
+            meter_consumption += first_rebase_entry['meter_value'] - last_mup_entry['meter_value']
 
-        self.logger.debug('Calculated consumption as {} Wh with:'.format(total_consumption))
-        self.logger.debug('    First MUP Entry: {}'.format(first_mup_entry['meter_value'] if first_mup_entry is not None else None))
-        self.logger.debug('    MUP Entry before first rebase: {}'.format(mup_entry_before_first_rebase['meter_value'] if mup_entry_before_first_rebase is not None else None))
-        self.logger.debug('    First Rebase Entry: {}'.format(first_rebase_entry['meter_value'] if first_rebase_entry is not None else None))
-        self.logger.debug('    Last Rebase Entry: {}'.format(last_rebase_entry['meter_value'] if last_rebase_entry is not None else None))
-        self.logger.debug('    Last MUP Entry: {}'.format(last_mup_entry['meter_value'] if last_mup_entry is not None else None))
+        calc_breakdown = '{} Wh given '.format(meter_consumption)
+        calc_breakdown += 'first_mup_entry={}, '.format(first_mup_entry['meter_value'] if first_mup_entry is not None else None)
+        calc_breakdown += 'mup_entry_before_first_rebase={}, '.format(mup_entry_before_first_rebase['meter_value'] if mup_entry_before_first_rebase is not None else None)
+        calc_breakdown += 'first_rebase_entry={}, '.format(first_rebase_entry['meter_value'] if first_rebase_entry is not None else None)
+        calc_breakdown += 'last_rebase_entry={}, '.format(last_rebase_entry['meter_value'] if last_rebase_entry is not None else None)
+        calc_breakdown += 'last_mup_entry={}.'.format(last_mup_entry['meter_value'] if last_mup_entry is not None else None)
 
-        return total_consumption
+        return {'meter_consumption': meter_consumption, 'calc_breakdown': calc_breakdown}
 
 
     def proc_meter_update(self, node_uuid, meter_entries):

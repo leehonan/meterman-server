@@ -114,6 +114,7 @@ api.add_resource(MeterEntries, '/meterentries/<node_uuid>')
 
 
 class MeterConsumption(Resource):
+
     @auth.login_required
     def get(self, node_uuid):
         if node_uuid.lower() in REQ_WILDCARDS:
@@ -146,14 +147,18 @@ class MeterConsumption(Resource):
         if not request_valid:
             return make_response(jsonify({'status': 'Bad Request', 'errors': request_bad_messages}), 400)
 
-        meter_consumption = meter_man.data_mgr.get_meter_consumption(node_uuid, time_from=time_from, time_to=time_to)
+        mc = meter_man.data_mgr.get_meter_consumption(node_uuid, time_from=time_from, time_to=time_to)
 
-        if meter_consumption is None:
+        logger.debug('Got consumption request for node {} from {} to {}.  Returned {} Wh, with calc breakdown... {}'.format(node_uuid, time_from, time_to,
+                                                                                                                            mc['meter_consumption'],
+                                                                                                                            mc['calc_breakdown']))
+
+        if mc is None:
             return jsonify({'request': {'node_uuid': node_uuid, 'time_from': time_from, 'time_to': time_to},
                     'result': {'meter_consumption': None}})
         else:
             return jsonify({'request': {'node_uuid': node_uuid, 'time_from': time_from, 'time_to': time_to},
-                    'result': {'meter_consumption': meter_consumption}})
+                    'result': mc})
 
 api.add_resource(MeterConsumption, '/meterconsumption/<node_uuid>')
 
@@ -389,6 +394,7 @@ class ApiCtrl:
         api_password = password
         api_access_lan_only = lan_only
         logger = base.get_logger(logger_name='api', log_file=log_file)
+
         self.port = port
         self.run_thread = None
 

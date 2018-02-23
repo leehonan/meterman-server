@@ -79,6 +79,8 @@ def get_logger(logger_name=DEFAULT_APP_LOGGER, log_file=log_file, is_msg_out=Fal
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
 
+    logger.info('Initiated logger ' + logger_name + '.  Log level = ' + logging.getLevelName(logger.getEffectiveLevel()))
+
     return logger
 
 

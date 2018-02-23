@@ -226,6 +226,7 @@ class MeterDeviceManager:
                 gateway['gw_obj'].get_node_snapshot()
                 gateway['last_snap_time'] = arrow.utcnow().timestamp
 
+            # process sim meters
             for node_uuid, sim_meter in gateway['sim_meters'].items():
                 message_interval = int(sim_meter['max_msg_entries']) * int(sim_meter['interval'])
                 if int(sim_meter['current_msg_start']) < arrow.utcnow().shift(seconds=-message_interval).timestamp:
@@ -257,16 +258,20 @@ class MeterDeviceManager:
         sim_meter['node_id'] = int(node_id)
         sim_meter['network_id'] = network_id
         sim_meter['interval'] = int(interval)
-        sim_meter['value'] = int(start_val)
         sim_meter['read_min'] = int(read_min)
         sim_meter['read_max'] = int(read_max)
         sim_meter['max_msg_entries'] = int(max_msg_entries)
         sim_meter['current_msg_start'] = 0
 
+        # check if meter simulator has a prior value in the database
+        last_meter_value = self.meter_man.data_mgr.db_mgr.get_last_mup(node_uuid, None, None)
+        sim_meter['value'] = last_meter_value['meter_value'] if last_meter_value is not None else int(start_val)
+
 
     def del_meter_sim(self, gateway_uuid, node_uuid):
         if node_uuid in self.gateways[gateway_uuid]['sim_meters']:
             del self.gateways[gateway_uuid]['sim_meters'][node_uuid]
+
 
     def set_node_gw_inst_tmp_rate(self, node_uuid, tmp_ginr_poll_rate, tmp_ginr_poll_time):
         gateway_id = self.meters[node_uuid]['gateway_uuid']

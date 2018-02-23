@@ -30,10 +30,12 @@ class MeterMan:
     def __init__(self):
         base.do_app_init()
         self.logger = base.get_logger(logger_name='meterman', log_file=base.log_file)
+
         self.logger.info('Running as user: ' + base.get_user())
 
-        self.device_mgr = mdev_mgr.MeterDeviceManager(self, log_file=base.log_file)
         self.data_mgr = mdata_mgr.MeterDataManager(db_file=base.db_file, log_file=base.log_file)
+        self.device_mgr = mdev_mgr.MeterDeviceManager(self, log_file=base.log_file)
+
         self.when_server_booted = boottime()
         self.simulate_meter = True
 
