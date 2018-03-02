@@ -191,40 +191,83 @@ class DBManager:
             self.logger.warn('sqlite3 Error: {0}'.format(err))
 
 
-    def update_meter_entry(self, node_uuid, when_start_raw, when_start_raw_nonce, when_start, entry_type, entry_value, duration, meter_value, rec_status):
+    def update_meter_entry(self, node_uuid, when_start_raw, when_start_raw_nonce, new_when_start, new_entry_type, new_entry_value, new_duration, new_meter_value, new_rec_status):
         try:
 
             if node_uuid is None or when_start_raw is None or when_start_raw_nonce is None:
                 raise ValueError('Primary key not given.  Got of node_uuid={0), when_start_raw={1}, when_start_raw_nonce={2}.'.format(node_uuid, when_start_raw, when_start_raw_nonce))
 
-            if when_start is None or entry_type is None or meter_value is None or rec_status is None:
+            if new_when_start is None and new_entry_type is None and new_entry_value is None and new_duration is None and\
+                    new_meter_value is None and new_rec_status is None:
                 raise ValueError('No update columns given.')
 
             # Build SQL update command...
             cmd = 'UPDATE meter_entry SET '
 
-            if when_start is not None:
-                cmd += 'when_start = {},'.format(when_start)
-            if entry_type is not None:
-                cmd += 'entry_type = "{}",'.format(entry_type)
-            if entry_value is not None:
-                cmd += 'entry_value = {},'.format(entry_value)
-            if duration is not None:
-                cmd += 'duration = {},'.format(duration)
-            if meter_value is not None:
-                cmd += 'meter_value = {},'.format(meter_value)
-            if rec_status is not None:
-                cmd += 'rec_status = "{}",'.format(rec_status)
+            if new_when_start is not None:
+                cmd += 'when_start = {},'.format(new_when_start)
+            if new_entry_type is not None:
+                cmd += 'entry_type = "{}",'.format(new_entry_type)
+            if new_entry_value is not None:
+                cmd += 'entry_value = {},'.format(new_entry_value)
+            if new_duration is not None:
+                cmd += 'duration = {},'.format(new_duration)
+            if new_meter_value is not None:
+                cmd += 'meter_value = {},'.format(new_meter_value)
+            if new_rec_status is not None:
+                cmd += 'rec_status = "{}",'.format(new_rec_status)
 
             cmd = cmd[:-1] + ' '      # replace trailing comma with space
 
-            cmd += 'WHERE node_uuid = "{0}", when_start_raw = {1}, when_start_raw_nonce = "{2}"'.format(
+            cmd += 'WHERE node_uuid = "{0}" AND when_start_raw = {1} AND when_start_raw_nonce = "{2}"'.format(
                 node_uuid, when_start_raw, when_start_raw_nonce
                 )
 
             cursor = self.connection.cursor()
             cursor.execute(cmd)
             self.logger.debug('Updated meter_entry record for PRIMARY KEY [{0},{1},{2}]'.format(node_uuid, when_start_raw, when_start_raw_nonce))
+            self.connection.commit()
+            cursor.close()
+
+        except ValueError as err:
+            self.logger.warn('Value Error: {0}'.format(err))
+
+        except sqlite3.IntegrityError as err:
+            self.logger.warn('sqlite3 IntegrityError: {0}'.format(err))
+
+        except sqlite3.Error as err:
+            self.logger.warn('sqlite3 Error: {0}'.format(err))
+
+
+    def update_meter_entries_in_range(self, node_uuid, when_start_from, when_start_to, entry_type=None, rec_status=None, new_entry_type=None, new_duration=None, new_rec_status=None):
+        try:
+            # Build SQL update command...
+            cmd = 'UPDATE meter_entry SET '
+
+            if new_entry_type is not None:
+                cmd += 'entry_type = "{}",'.format(new_entry_type.value)
+            if new_duration is not None:
+                cmd += 'duration = {},'.format(new_duration)
+            if new_rec_status is not None:
+                cmd += 'rec_status = "{}",'.format(new_rec_status.value)
+
+            cmd = cmd[:-1] + ' '      # replace trailing comma with space
+
+            cmd += 'WHERE node_uuid = "{}" AND when_start >= {} AND when_start <= {} AND '.format(
+                node_uuid, when_start_from, when_start_to
+                )
+
+            if entry_type is not None:
+                cmd += 'entry_type = "{}" AND '.format(entry_type.value)
+            if rec_status is not None:
+                cmd += 'rec_status = "{}" AND '.format(rec_status.value)
+
+            if cmd.endswith('AND '):
+                cmd = cmd[:-4] + ' '  # replace trailing "AND " with space
+
+            cursor = self.connection.cursor()
+            cursor.execute(cmd)
+            self.logger.debug('Updated meter_entries for node {} between {} and {}'.format(node_uuid, when_start_from, when_start_to))
             self.connection.commit()
             cursor.close()
 
@@ -281,8 +324,10 @@ class DBManager:
             if cmd.endswith('AND '):
                 cmd = cmd[:-4] + ' '  # replace trailing "AND " with space
 
+            cmd += 'ORDER BY when_start'
+
             if limit_count is not None:
-                cmd += 'ORDER BY when_start DESC LIMIT {0}'.format(limit_count)
+                cmd += ' DESC LIMIT {0}'.format(limit_count)
 
             cursor = self.connection.cursor()
             cursor.execute(cmd)
@@ -342,13 +387,30 @@ class DBManager:
         return self.get_meter_entry(node_uuid, is_rebase=True, is_first=False, time_from=time_from, time_to=time_to)
 
 
-    def delete_meter_entry(self, node_uuid, when_start_raw, when_start_raw_nonce):
+    def purge_meter_entry(self, node_uuid, when_start_raw, when_start_raw_nonce):
         try:
             cursor = self.connection.cursor()
             cursor.execute('DELETE FROM meter_entry WHERE node_uuid = "{0}" AND when_start_raw = {1} AND when_start_raw_nonce = "{2}"'.format(
                 node_uuid, when_start_raw, when_start_raw_nonce
             ))
             cursor.close()
+
+        except sqlite3.Error as err:
+            self.logger.warn('sqlite3 Error: {0}'.format(err))
+
+
+    def purge_meter_entries_in_range(self, node_uuid, time_from, time_to, entry_type=None):
+        try:
+            cmd = 'DELETE FROM meter_entry ' \
+                  'WHERE node_uuid = {} AND when_start >= {} AND when_start <= {}'
+
+            if entry_type is not None:
+                cmd += ' AND entry_type == {}'.format(entry_type.value)
+
+            cursor = self.connection.cursor()
+            cursor.execute(cmd)
+            cursor.close()
+            self.logger.info('Deleted meter entries for node {} from {} to {} with type {}'.format(node_uuid, time_from, time_to, entry_type))
 
         except sqlite3.Error as err:
             self.logger.warn('sqlite3 Error: {0}'.format(err))

@@ -14,6 +14,6 @@ setup(name='meterman',
     packages=['meterman'],
     include_package_data=True,
     install_requires=[
-        'arrow', 'flask', 'flask_httpauth', 'flask_restful', 'ipaddress', 'uptime', 'pytest', 'argparse', 'pyserial'
+        'arrow', 'flask', 'flask_httpauth', 'flask_restful', 'ipaddress', 'uptime', 'pytest', 'argparse', 'pyserial', 'bokeh', 'pandas'
     ],
     zip_safe=True)

@@ -1,0 +1,11 @@
+[{"when_start":1519961860,"entry_value":3,"entry_interval_length":10,"meter_value":8920},
+{"when_start":1519961870,"entry_value":10,"entry_interval_length":10,"meter_value":8930},
+{"when_start":1519961880,"entry_value":10,"entry_interval_length":10,"meter_value":8940},
+{"when_start":1519961890,"entry_value":10,"entry_interval_length":10,"meter_value":8950},
+{"when_start":1519961900,"entry_value":10,"entry_interval_length":10,"meter_value":8960}]
+
+1519961860,3,10,8920;
+1519961870,10,10,8930;
+1519961880,10,10,8940;
+1519961890,10,10,8950;
+1519961900,10,10,8960

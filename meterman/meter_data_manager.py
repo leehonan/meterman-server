@@ -81,7 +81,7 @@ class MeterDataManager:
                                     last_rssi_at_gateway))
 
 
-    def get_meter_entries(self, node_uuid=None, entry_type=None, rec_status=None, time_from=None, time_to=None, query_type=None, limit_count=1000):
+    def get_meter_entries(self, node_uuid=None, entry_type=None, rec_status=None, time_from=None, time_to=None, limit_count=None):
         return self.dictlist_from_rows(self.db_mgr.get_node_meter_entries(node_uuid, entry_type, rec_status, time_from, time_to, limit_count))
 
 
@@ -169,3 +169,30 @@ class MeterDataManager:
     def proc_node_event(self, node_uuid, timestamp, event_type, details=None):
         self.db_mgr.write_node_event(node_uuid, timestamp, event_type, details)
 
+
+    def delete_meter_entries_in_range(self, node_uuid, time_from, time_to, entry_type=None, rec_status=None):
+        # mark as deleted (do not purge)
+        self.db_mgr.update_meter_entries_in_range(node_uuid, time_from, time_to, entry_type=entry_type, rec_status=rec_status, new_rec_status=db.RecStatus.DELETED)
+
+
+    def upsert_synth_meter_updates(self, node_uuid, overwrite_time_from, overwrite_time_to, meter_entries, rebase_first=True, lift_later=False):
+        self.delete_meter_entries_in_range(node_uuid, overwrite_time_from, overwrite_time_to, entry_type=db.EntryType.METER_UPDATE)
+        self.delete_meter_entries_in_range(node_uuid, overwrite_time_from, overwrite_time_to, entry_type=db.EntryType.METER_UPDATE_SYNTH)
+        if rebase_first:
+            timestamp_nonce = base.get_nonce()
+            self.db_mgr.write_meter_entry(node_uuid, int(meter_entries[0]['when_start']), timestamp_nonce, int(meter_entries[0]['when_start']), db.EntryType.METER_REBASE_SYNTH.value, 0, 0,
+                                          int(meter_entries[0]['meter_value']), db.RecStatus.NORMAL.value)
+
+        for entry in meter_entries:
+            timestamp_nonce = base.get_nonce()
+            self.db_mgr.write_meter_entry(node_uuid, int(entry['when_start']), timestamp_nonce, int(entry['when_start']), db.EntryType.METER_UPDATE_SYNTH.value,
+                                          int(entry['entry_value']), int(entry['entry_interval_length']), int(entry['meter_value']), db.RecStatus.NORMAL.value)
+
+        if lift_later:
+            new_meter_value = meter_entries[-1]['meter_value']
+            later_entries = self.get_meter_entries(node_uuid=node_uuid, time_from=(meter_entries[-1]['when_start'] + 1), rec_status=db.RecStatus.NORMAL.value, limit_count=None)
+            for entry in later_entries:
+                new_meter_value += entry['entry_value']
+                self.db_mgr.update_meter_entry(node_uuid, when_start_raw=entry['when_start_raw'], when_start_raw_nonce=entry['when_start_raw_nonce'],
+                                               new_meter_value=new_meter_value, new_entry_value=None, new_rec_status=None, new_duration=None, new_entry_type=None,
+                                               new_when_start=None)

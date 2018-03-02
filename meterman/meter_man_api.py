@@ -2,13 +2,12 @@
 
 import ipaddress
 import threading
-
 import arrow
 from flask import Flask, make_response, jsonify, request
 from flask_httpauth import HTTPBasicAuth
 from flask_restful import reqparse, Api, Resource
-
-from meterman import app_base as base
+import json
+from meterman import meter_db as db, app_base as base, viz_data
 
 MAX_REQ_ITEMS = 100000
 DEF_REQ_ITEMS = 100
@@ -383,6 +382,223 @@ class NodeCtrl(Resource):
                                     'puck_led_time': puck_led_time}, 'result': 'request queued.'})
 
 api.add_resource(NodeCtrl, '/nodectrl/<node_uuid>')
+
+
+class MeterDataDelete(Resource):
+    @auth.login_required
+    def put(self, node_uuid):
+        if node_uuid.lower() in REQ_WILDCARDS:
+            node_uuid = None
+
+        parser = reqparse.RequestParser()
+        parser.add_argument('time_from', type=int, help='start time as epoch UTC, mandatory')
+        parser.add_argument('time_to', type=int, help='finish time as epoch UTC, mandatory')
+        parser.add_argument('entry_type', type=str, help='Must be provided, one of: all, update, rebase, synth-update, synth-rebase, synth-all')
+        args = parser.parse_args()
+
+        time_from = args['time_from']
+        time_to = args['time_to']
+        entry_type = args['entry_type']
+
+        request_valid = True
+        request_bad_messages = []
+
+        if entry_type is None or entry_type.lower() not in ['all', 'update', 'rebase', 'synth-update', 'synth-rebase', 'synth-all']:
+            request_valid = False
+            request_bad_messages.append({'api_error': 'Invalid request', 'message': 'Invalid entry type.  Must be provided, one of: all, update, rebase, synth-update, synth-rebase, synth-all.'})
+
+        if time_from is None or (time_from is not None and validate_utc_ts(time_from) is False):
+            request_valid = False
+            request_bad_messages.append({'api_error': 'Invalid request', 'message': 'Invalid time_from.  Must be valid UNIX epoch timestamp '
+                                                                                    'on or before time_to, and between {0} and {1}.'.format(base.MIN_TIME,
+                                                                                                                                            base.MAX_TIME)})
+
+        if time_to is None or (time_to is not None and (validate_utc_ts(time_to) is False or time_to < time_from)):
+            request_valid = False
+            request_bad_messages.append({'api_error': 'Invalid request', 'message': 'Invalid time_to.  Must be valid UNIX epoch timestamp '
+                                                                                    'on or after time_from, and between {0} and {1}.'.format(base.MIN_TIME,
+                                                                                                                                             base.MAX_TIME)})
+
+        if not request_valid:
+            return make_response(jsonify({'status': 'Bad Request', 'errors': request_bad_messages}), 400)
+
+        del_entry_types = []
+        if entry_type == 'all':
+            del_entry_types.append(db.EntryType.METER_UPDATE)
+            del_entry_types.append(db.EntryType.METER_REBASE)
+            del_entry_types.append(db.EntryType.METER_UPDATE_SYNTH)
+            del_entry_types.append(db.EntryType.METER_UPDATE_SYNTH)
+        elif entry_type == 'synth-all':
+            del_entry_types.append(db.EntryType.METER_UPDATE_SYNTH)
+            del_entry_types.append(db.EntryType.METER_UPDATE_SYNTH)
+        elif entry_type == 'update':
+            del_entry_types.append(db.EntryType.METER_UPDATE)
+        elif entry_type == 'rebase':
+            del_entry_types.append(db.EntryType.METER_REBASE)
+        elif entry_type == 'synth-update':
+            del_entry_types.append(db.EntryType.METER_UPDATE_SYNTH)
+        elif entry_type == 'synth-rebase':
+            del_entry_types.append(db.EntryType.METER_REBASE_SYNTH)
+
+        for del_entry_type in del_entry_types:
+            meter_man.data_mgr.delete_meter_entries_in_range(node_uuid=node_uuid, time_from=time_from, time_to=time_to, entry_type=del_entry_type)
+
+        return jsonify({'request': {'node_uuid': node_uuid, 'time_from': time_from, 'time_to': time_to, 'entry_type': entry_type},
+                        'result': {'operation_delete': 'OK.  *Marked* as deleted in DB.'}})
+
+api.add_resource(MeterDataDelete, '/meterdata/delete/<node_uuid>')
+
+
+class MeterDataUpload(Resource):
+    # Allows upoad of a block of csv or json interval entries, or the generation of entries with a given interval and value from a start time.
+    # CSV record format is "<when_start(utc_epoch)>,<entry_value>,<entry_interval_length>,<meter_value>;", json is "{'when_start':'<time(utc_epoch)>','entry_value':'<entry_value>',
+    # 'entry_interval_length':'<entry_interval_length>,'meter_value':'<meter_value>'}"
+    # Reads created as synthetic mups.  Will force creation of synthetic rebase.  time from and time to will be used to mark prior entries in range as deleted.
+    @auth.login_required
+    def put(self, node_uuid, operation):
+        if node_uuid.lower() in REQ_WILDCARDS:
+            node_uuid = None
+
+        request_valid = True
+        request_bad_messages = []
+
+        if operation is None or operation.lower() not in ['csv-reads', 'json-reads', 'generator']:
+            request_valid = False
+            request_bad_messages.append({'api_error': 'Invalid request',
+                                         'message': 'Invalid operation.  Must be provided, one of: csv-reads, json-reads, generator'})
+
+        parser = reqparse.RequestParser()
+        parser.add_argument('time_from', type=int, help='start time as epoch UTC, mandatory')
+        parser.add_argument('time_to', type=int, help='finish time as epoch UTC, mandatory')
+        parser.add_argument('gen_start_meter_value', type=int, help='generator starting accum meter val')
+        parser.add_argument('gen_entry_value', type=int, help='generator entries to be this size in Wh')
+        parser.add_argument('gen_interval_length', type=int, help='generator interval length')
+        parser.add_argument('gen_entry_count', type=int, help='generator entry count')
+        parser.add_argument('meter_data', type=str,
+                            help='Meter data in CSV or JSON format.')
+        parser.add_argument('lift_later_reads', type=bool,
+                            help='Whether to lift later reads.')
+
+        args = parser.parse_args()
+
+        time_from = args['time_from']
+        time_to = args['time_to']
+        gen_start_meter_value = args['gen_start_meter_value']
+        gen_entry_value = args['gen_entry_value']
+        gen_interval_length = args['gen_interval_length']
+        gen_entry_count = args['gen_entry_count']
+        meter_data = args['meter_data']
+        lift_later_reads = args['lift_later_reads']
+
+        meter_entries = []
+
+        if time_from is None or (time_from is not None and validate_utc_ts(time_from) is False):
+            request_valid = False
+            request_bad_messages.append(
+                {'api_error': 'Invalid request', 'message': 'Invalid time_from.  Must be valid UNIX epoch timestamp '
+                                                            'on or before time_to, and between {0} and {1}.'.format(
+                    base.MIN_TIME,
+                    base.MAX_TIME)})
+
+        if time_to is None or (time_to is not None and (validate_utc_ts(time_to) is False or time_to < time_from)):
+            request_valid = False
+            request_bad_messages.append(
+                {'api_error': 'Invalid request', 'message': 'Invalid time_to.  Must be valid UNIX epoch timestamp '
+                                                            'on or after time_from, and between {0} and {1}.'.format(
+                    base.MIN_TIME,
+                    base.MAX_TIME)})
+
+        if request_valid and operation.lower() in ['json-reads', 'csv-reads'] and meter_data is None:
+            request_valid = False
+            request_bad_messages.append({'api_error': 'Invalid request',
+                                         'message': 'No meter data.'})
+
+        if request_valid and operation.lower() == 'json-reads' and meter_data is not None:
+            try:
+                json_meter_data = json.loads(meter_data)
+            except ValueError as err:
+                request_valid = False
+                request_bad_messages.append({'api_error': 'Invalid request',
+                                             'message': 'Invalid JSON: {}'.format(err)})
+            else:
+                for entry in json_meter_data:
+                    meter_entries.append({'when_start': entry['when_start'], 'entry_value': entry['entry_value'],
+                                          'entry_interval_length': entry['entry_interval_length'],
+                                          'meter_value': entry['meter_value']})
+
+        elif request_valid and operation.lower() == 'csv-reads' and meter_data is not None:
+            for entry in meter_data.split(';'):
+                entry_elements = entry.split(',')
+                meter_entries.append({'when_start': int(entry_elements[0]), 'entry_value': int(entry_elements[1]),
+                                      'entry_interval_length': int(entry_elements[2]),
+                                      'meter_value': int(entry_elements[3])})
+
+        elif request_valid and operation.lower() == 'generator':
+            if gen_entry_value is None or gen_interval_length is None or gen_entry_count is None or gen_start_meter_value is None:
+                request_valid = False
+                request_bad_messages.append({'api_error': 'Invalid request',
+                                             'message': 'Must provide gen_entry_value, gen_interval_length, gen_start_meter_value,'
+                                                        'or gen_entry_count for generator operation.'})
+            else:
+                entry_when_start = time_from
+                entry_meter_value = gen_start_meter_value
+                for i in range(gen_entry_count):
+                    meter_entries.append({'when_start': entry_when_start, 'entry_value': gen_entry_value,
+                                          'entry_interval_length': gen_interval_length,
+                                          'meter_value': entry_meter_value})
+                    entry_when_start += gen_interval_length
+                    entry_meter_value += gen_entry_value
+
+        if not request_valid:
+            return make_response(jsonify({'status': 'Bad Request', 'errors': request_bad_messages}), 400)
+
+        meter_man.data_mgr.upsert_synth_meter_updates(node_uuid=node_uuid, overwrite_time_from=time_from, overwrite_time_to=time_to, meter_entries=meter_entries,
+                                                            rebase_first=True, lift_later=lift_later_reads)
+
+        return jsonify(
+            {'request': {'operation': operation.lower(), 'node_uuid': node_uuid, 'time_from': time_from, 'time_to': time_to,
+                         'gen_start_meter_value':gen_start_meter_value, 'gen_entry_value':gen_entry_value,
+                         'gen_interval_length': gen_interval_length, 'gen_entry_count':gen_entry_count,
+                         'lift_later_reads':lift_later_reads},
+             'result': {operation.lower(): 'OK.  Data uploaded and prior reads in range marked as deleted.'}})
+
+api.add_resource(MeterDataUpload, '/meterdata/upload/<operation>/<node_uuid>')
+
+
+class MeterDataPlotter(Resource):
+    @auth.login_required
+    def get(self, node_uuid):
+        if node_uuid.lower() in REQ_WILDCARDS:
+            node_uuid = None
+
+        parser = reqparse.RequestParser()
+        parser.add_argument('output_path', type=str, help='path for plot')
+        args = parser.parse_args()
+
+        output_path = args['output_path']
+
+        request_valid = True
+        request_bad_messages = []
+
+        try:
+            open(output_path, 'w')
+        except TypeError or OSError as err:
+            request_valid = False
+            request_bad_messages.append({'api_error': 'Invalid request', 'message': 'Valid output path must be supplied.'})
+
+        if request_valid:
+            try:
+                viz_data.output_plot(node_uuid=node_uuid, plot_output_file=output_path, data_mgr=meter_man.data_mgr, db_file=None)
+            except ValueError as err:
+                logger.warn('Invalid meter data plot request: {0}'.format(err))
+
+        if not request_valid:
+            return make_response(jsonify({'status': 'Bad Request', 'errors': request_bad_messages}), 400)
+        else:
+            return jsonify({'request': {'node_uuid': node_uuid, 'output_path': output_path},
+                        'result': {'meter data plot':'Plot (html) written to {}'.format(output_path)}})
+
+api.add_resource(MeterDataPlotter, '/meterdata/plot/<node_uuid>')
 
 
 class ApiCtrl:

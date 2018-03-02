@@ -17,10 +17,10 @@ CONFIG_FILE = 'config.txt'
 DEFAULT_APP_LOGGER = 'base'
 
 # paths set to defaults - should be overridden except for testing
-home_path = '/tmp'
-temp_path = '/tmp'
-log_file = temp_path + '/mm_log_file'
-db_file = temp_path + '/mm_db_file'
+home_path = '/temp'
+temp_path = '/temp'
+log_file = temp_path + '/meterman_test_log.txt'
+db_file = temp_path + '/meterman_test_data.db'
 log_level = 'DEBUG'
 config = None
 
@@ -47,6 +47,7 @@ def do_app_init():
     if not os.path.exists(temp_path):
         os.mkdir(temp_path)
 
+#TODO: just copy default config to ~/meterman if dowsn't exist
     config_symlink = home_path + '/' + CONFIG_FILE
     if not os.path.islink(config_symlink):
         os.symlink(working_dir + '/' + CONFIG_FILE, config_symlink)
