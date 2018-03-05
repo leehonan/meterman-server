@@ -2,7 +2,7 @@
 
 # download with 'sudo wget https://github.com/leehonan/meterman-server/raw/master/meterman_setup.sh'
 # then 'sudo chmod +x ./meterman_setup.sh'
-# then 'sudo ./meterman_setup.sh'
+# then 'sudo ./meterman_setup.sh -n <network_id> -d (data purge) -c (config purge)''
 
 if [ $(/usr/bin/id -u) -ne 0 ]
 then
@@ -10,40 +10,52 @@ then
     exit
 fi
 
-do_purge=false
+do_data_purge=false
+do_config_purge=false
 network_id=0
 
-while getopts ":p:n" opt; do
+while getopts "n:dc" opt; do
   case $opt in
-    p)
-      echo "meterman data purge was triggered!" >&2
-      do_purge=true
-      ;;
     n)
-      echo "setting network id to $OPTARG" >&2
-      network_id=$OPTARG
-      ;;
+        network_id=$OPTARG
+        echo "setting network id to $OPTARG" >&2
+        ;;
+    d)
+        do_data_purge=true
+        echo "meterman data purge was triggered!" >&2
+        ;;
+    c)
+        do_config_purge=true
+        echo "meterman config purge was triggered!" >&2
+        ;;
     \?)
-      echo "Invalid option: -$OPTARG, options are -p (purge), -n <network_id>" >&2
-      ;;
+        echo "Invalid option: -$OPTARG, options are -n <network_id>, -d (data purge), -c (config purge)" >&2
+  ;;
   esac
 done
 
 if [ -e /lib/systemd/system/meterman.service ]
 then
-    sudo systemctl stop meterman.service
+    systemctl stop meterman.service
 fi
 
 if [ -d /home/pi/meterman ]
 then
-    sudo chown -R root:root /home/pi/meterman
-    sudo chmod -R 775 /home/pi/meterman
+    chown -R root:root /home/pi/meterman
+    chmod -R 775 /home/pi/meterman
 fi
 
-if [ $do_purge ]
+if [ $do_data_purge ]
 then
     echo "purging old meterman data..."
-    sudo rm /home/pi/meterman/meterman*
+    rm /home/pi/meterman/meterman*
+fi
+
+if [ $do_config_purge ]
+then
+    echo "purging old meterman config..."
+    rm /home/pi/meterman/config.txt
+    rm /usr/local/lib/python3.6/site-packages/meterman/config.txt
 fi
 
 echo "Cleaning up from previous runs..."
@@ -73,7 +85,7 @@ then
     wget https://www.python.org/ftp/python/3.6.0/Python-3.6.0.tgz
     tar xzvf Python-3.6.0.tgz
     cd Python-3.6.0/
-    ./configure && sudo make -j4 && sudo make install
+    ./configure && make -j4 && make install
     echo "Done"
 fi
 
@@ -83,11 +95,11 @@ then
     echo "Configuring GPIO Serial..."
     if [ ! -e /dev/ttyS0 ]
     then
-        sudo systemctl stop serial-getty@ttyAMA0.service
-        sudo systemctl disable serial-getty@ttyAMA0.service
+        systemctl stop serial-getty@ttyAMA0.service
+        systemctl disable serial-getty@ttyAMA0.service
     else
-        sudo systemctl stop serial-getty@ttyS0.service
-        sudo systemctl disable serial-getty@ttyS0.service
+        systemctl stop serial-getty@ttyS0.service
+        systemctl disable serial-getty@ttyS0.service
     fi
 
     grep -q -F 'enable_uart=1' /boot/config.txt || echo 'enable_uart=1' >> /boot/config.txt
@@ -135,7 +147,7 @@ pip3.6 install meterman-0.1.tar.gz --upgrade
 
 if [ network_id != 0 ]; then
     echo "Changing Network Id to $network_id"
-    sed -i "s/network_id = 0.0.1.1/network_id = $network_id/g" -i /usr/local/lib/python3.6/site-packages/default_config.txt
+    sed -i "s/network_id = 0.0.1.1/network_id = $network_id/g" -i /usr/local/lib/python3.6/site-packages/meterman/default_config.txt
 fi
 
 cp meterman.service /lib/systemd/system
